@@ -14,7 +14,6 @@ import androidx.lifecycle.ViewModelProvider
 import com.filimonov.composition.R
 import com.filimonov.composition.databinding.FragmentGameBinding
 import com.filimonov.composition.domain.entity.GameResult
-import com.filimonov.composition.domain.entity.GameSettings
 import com.filimonov.composition.domain.entity.Level
 
 class GameFragment : Fragment() {
@@ -24,7 +23,7 @@ class GameFragment : Fragment() {
     private val viewModel: GameViewModel by lazy {
         ViewModelProvider(
             this,
-            ViewModelProvider.AndroidViewModelFactory(requireActivity().application)
+            GameViewModelFactory(requireActivity().application, level)
         )[GameViewModel::class.java]
     }
 
@@ -59,12 +58,11 @@ class GameFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         observeViewModel()
-        viewModel.start(level)
         setClickListenersToOptions()
     }
 
     private fun setClickListenersToOptions() {
-        tvOptions.forEach {textView ->
+        tvOptions.forEach { textView ->
             textView.setOnClickListener {
                 viewModel.chooseAnswer(textView.text.toString().toInt())
             }
