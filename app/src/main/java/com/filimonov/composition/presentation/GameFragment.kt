@@ -1,19 +1,42 @@
 package com.filimonov.composition.presentation
 
+import android.content.res.ColorStateList
+import android.os.Build
+import android.os.Build.VERSION
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import com.filimonov.composition.R
 import com.filimonov.composition.databinding.FragmentGameBinding
 import com.filimonov.composition.domain.entity.GameResult
-import com.filimonov.composition.domain.entity.GameSettings
 import com.filimonov.composition.domain.entity.Level
 
 class GameFragment : Fragment() {
 
     private lateinit var level: Level
+
+    private val viewModel: GameViewModel by lazy {
+        ViewModelProvider(
+            this,
+            GameViewModelFactory(requireActivity().application, level)
+        )[GameViewModel::class.java]
+    }
+
+    private val tvOptions by lazy {
+        mutableListOf<TextView>().apply {
+            add(binding.tvOption1)
+            add(binding.tvOption2)
+            add(binding.tvOption3)
+            add(binding.tvOption4)
+            add(binding.tvOption5)
+            add(binding.tvOption6)
+        }
+    }
 
     private var _binding: FragmentGameBinding? = null
     private val binding: FragmentGameBinding
@@ -34,8 +57,58 @@ class GameFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.tvQuestion.setOnClickListener {
-            launchGameFinishedFragment(GameResult(true, 1, 1, GameSettings(0, 0, 0, 0)))
+        observeViewModel()
+        setClickListenersToOptions()
+    }
+
+    private fun setClickListenersToOptions() {
+        tvOptions.forEach { textView ->
+            textView.setOnClickListener {
+                viewModel.chooseAnswer(textView.text.toString().toInt())
+            }
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.question.observe(viewLifecycleOwner) {
+            binding.tvSum.text = it.sum.toString()
+            binding.tvLeftNumber.text = it.visibleNumber.toString()
+            tvOptions.forEachIndexed { index, textView ->
+                textView.text = it.options[index].toString()
+            }
+        }
+        viewModel.formattedTimer.observe(viewLifecycleOwner) {
+            binding.tvTimer.text = it
+        }
+        viewModel.progressAnswers.observe(viewLifecycleOwner) {
+            binding.tvAnswersProgress.text = it
+        }
+        viewModel.enoughCountOfRightAnswers.observe(viewLifecycleOwner) {
+            val colorResId = if (it) {
+                android.R.color.holo_green_light
+            } else {
+                android.R.color.holo_red_light
+            }
+            val color = ContextCompat.getColor(requireContext(), colorResId)
+            binding.tvAnswersProgress.setTextColor(color)
+        }
+        viewModel.enoughPercentOfRightAnswers.observe(viewLifecycleOwner) {
+            val colorResId = if (it) {
+                android.R.color.holo_green_light
+            } else {
+                android.R.color.holo_red_light
+            }
+            val color = ContextCompat.getColor(requireContext(), colorResId)
+            binding.progressBar.progressTintList = ColorStateList.valueOf(color)
+        }
+        viewModel.minPercentValue.observe(viewLifecycleOwner) {
+            binding.progressBar.secondaryProgress = it
+        }
+        viewModel.percentOfRightAnswers.observe(viewLifecycleOwner) {
+            binding.progressBar.setProgress(it, true)
+        }
+        viewModel.gameResult.observe(viewLifecycleOwner) {
+            launchGameFinishedFragment(it)
         }
     }
 
@@ -47,7 +120,15 @@ class GameFragment : Fragment() {
     }
 
     private fun parseArgs() {
-        level = requireArguments().getSerializable(KEY_LEVEL) as Level
+        if (VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requireArguments().getParcelable(KEY_LEVEL, Level::class.java)?.let {
+                level = it
+            }
+        } else {
+            requireArguments().getParcelable<Level>(KEY_LEVEL)?.let {
+                level = it
+            }
+        }
     }
 
     override fun onDestroyView() {
@@ -63,7 +144,7 @@ class GameFragment : Fragment() {
         fun newInstance(level: Level): GameFragment {
             return GameFragment().apply {
                 arguments = Bundle().apply {
-                    putSerializable(KEY_LEVEL, level)
+                    putParcelable(KEY_LEVEL, level)
                 }
             }
         }
