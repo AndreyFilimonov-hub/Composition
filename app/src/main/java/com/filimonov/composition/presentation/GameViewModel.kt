@@ -136,7 +136,8 @@ class GameViewModel(private val application: Application, private val level: Lev
             winner,
             countOfRightAnswers,
             countOfQuestions,
-            gameSettings
+            calculatePercentOfRightAnswers(),
+            gameSettings,
         )
     }
 
